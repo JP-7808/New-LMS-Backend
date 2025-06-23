@@ -126,6 +126,23 @@ const courseSchema = new mongoose.Schema({
     default: Date.now
   },
   reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Review' }], // Fixed to reference Review model
+  languages: [{
+    type: String,
+    enum: ['en', 'es', 'fr'] // Supported languages for this course
+  }],
+  subtitles: [{
+    language: String,
+    url: String
+  }],
+  liveSessions: [{
+    title: String,
+    description: String,
+    schedule: Date,
+    duration: Number,
+    meetingId: String,
+    meetingPassword: String,
+    recordingUrl: String
+  }],
 }, {
   timestamps: true
 });

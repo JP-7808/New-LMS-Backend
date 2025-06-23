@@ -66,6 +66,38 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false
   },
+  googleId: {
+    type: String,
+    select: false
+  },
+  provider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
+  },
+  notificationPreferences: {
+    email: {
+      type: Boolean,
+      default: true
+    },
+    push: {
+      type: Boolean,
+      default: true
+    },
+    inApp: {
+      type: Boolean,
+      default: true
+    }
+  },
+  preferredLanguage: {
+    type: String,
+    default: 'en',
+    enum: ['en', 'es', 'fr'] // Add more languages as needed
+  },
+  fcmToken: {
+    type: String,
+    select: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

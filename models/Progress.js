@@ -79,7 +79,34 @@ const progressSchema = new mongoose.Schema({
   },
   lastAccessed: {
     type: Date
-  }
+  },
+  videoProgress: [{
+    content: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Content'
+    },
+    position: Number, // in seconds
+    completed: Boolean,
+    lastWatched: Date,
+    totalWatched: Number // in seconds
+  }],
+  notes: [{
+    content: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Content'
+    },
+    text: String,
+    createdAt: Date
+  }],
+  bookmarks: [{
+    content: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Content'
+    },
+    position: Number,
+    note: String,
+    createdAt: Date
+  }],
 }, {
   timestamps: true
 });

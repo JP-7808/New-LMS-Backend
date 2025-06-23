@@ -50,6 +50,19 @@ const contentSchema = new mongoose.Schema({
     ref: 'Course',
     required: true
   },
+  playbackPositions: [{
+    student: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Student'
+    },
+    position: Number, // in seconds
+    lastAccessed: Date,
+    completed: Boolean
+  }],
+  subtitles: [{
+    language: String,
+    url: String
+  }],
   createdAt: {
     type: Date,
     default: Date.now

@@ -50,6 +50,20 @@ const studentSchema = new mongoose.Schema({
       max: 100
     }
   }],
+  liveClassSessions: [{
+    meetingId: String,
+    provider: String, // 'zoom', 'jitsi', etc.
+    joinUrl: String,
+    startTime: Date,
+    endTime: Date,
+    attended: Boolean
+  }],
+  leaderboardPosition: Number,
+  streak: {
+    current: Number,
+    longest: Number,
+    lastActiveDate: Date
+  },
   
 });
 

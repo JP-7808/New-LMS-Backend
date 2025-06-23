@@ -45,7 +45,13 @@ const instructorSchema = new mongoose.Schema({
   },
   approvalDate: {
     type: Date
-  }
+  },
+  liveClassSettings: {
+    zoomApiKey: String,
+    zoomApiSecret: String,
+    jitsiRoomPrefix: String,
+    preferredPlatform: String
+  },
 });
 
 export default User.discriminator('instructor', instructorSchema);

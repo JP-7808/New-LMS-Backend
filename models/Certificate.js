@@ -54,7 +54,20 @@ const certificateSchema = new mongoose.Schema({
   },
   revokedReason: {
     type: String
-  }
+  },
+  designOptions: {
+    template: String,
+    colors: {
+      primary: String,
+      secondary: String
+    },
+    logo: String,
+    signature: String
+  },
+  metadata: {
+    hash: String,
+    verificationCode: String
+  },
 }, {
   timestamps: true
 });
