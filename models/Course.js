@@ -49,7 +49,7 @@ const courseSchema = new mongoose.Schema({
   discountPrice: {
     type: Number,
     validate: {
-      validator: function(value) {
+      validator: function (value) {
         return value < this.price;
       },
       message: 'Discount price must be less than regular price'
@@ -91,6 +91,10 @@ const courseSchema = new mongoose.Schema({
       isPreview: {
         type: Boolean,
         default: false
+      },
+      note: {
+        type: String,
+        trim: true // ✅ New field added for instructor notes
       }
     }]
   }],
@@ -125,7 +129,7 @@ const courseSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Review' }], // Fixed to reference Review model
+  reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Review' }],
   languages: [{
     type: String,
     enum: ['en', 'es', 'fr'] // Supported languages for this course
@@ -142,13 +146,13 @@ const courseSchema = new mongoose.Schema({
     meetingId: String,
     meetingPassword: String,
     recordingUrl: String
-  }],
+  }]
 }, {
   timestamps: true
 });
 
 // Update the updatedAt field before saving
-courseSchema.pre('save', function(next) {
+courseSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });

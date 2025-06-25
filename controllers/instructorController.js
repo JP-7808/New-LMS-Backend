@@ -240,7 +240,15 @@ export const uploadCourseContent = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please upload a file' });
     }
 
-    const { sectionId, lectureId, title, description, type, isDownloadable } = req.body;
+    const {
+      sectionId,
+      lectureId,
+      title,
+      description,
+      type,
+      isDownloadable,
+      note // ← NEW: Accept lecture note
+    } = req.body;
 
     // Create content record
     const content = await Content.create({
@@ -277,8 +285,12 @@ export const uploadCourseContent = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Lecture not found' });
     }
 
-    // Update lecture content
+    // Update lecture content and note
     lecture.content = content._id;
+    if (note) {
+      lecture.note = note; // ← Add note to lecture
+    }
+
     await course.save();
 
     res.status(201).json({ success: true, data: content });

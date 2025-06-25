@@ -721,3 +721,59 @@ export const getSupportTickets = async (req, res, next) => {
     next(error);
   }
 };
+
+// PATCH /students/:studentId/bookmark/:courseId
+export const bookmarkCourse = async (req, res, next) => {
+  try {
+    const { studentId, courseId } = req.params;
+
+    const student = await Student.findByIdAndUpdate(
+      studentId,
+      { $addToSet: { bookmarkedCourses: courseId } }, // No duplicates
+      { new: true }
+    ).populate('bookmarkedCourses');
+
+    res.status(200).json({ success: true, data: student.bookmarkedCourses });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+// DELETE /students/:studentId/bookmark/:courseId
+export const removeBookmark = async (req, res, next) => {
+  try {
+    const { studentId, courseId } = req.params;
+
+    const student = await Student.findByIdAndUpdate(
+      studentId,
+      { $pull: { bookmarkedCourses: courseId } },
+      { new: true }
+    ).populate('bookmarkedCourses');
+
+    res.status(200).json({ success: true, data: student.bookmarkedCourses });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getBookmarkedCourses = async (req, res, next) => {
+  try {
+    const student = await Student.findById(req.user.id)
+      .populate({
+        path: 'bookmarkedCourses',
+        model: 'Course'
+      });
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: student.bookmarkedCourses
+    });
+  } catch (error) {
+    next(error);
+  }
+};
