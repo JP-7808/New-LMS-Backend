@@ -40,6 +40,10 @@ const contentSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  downloadFormats: [{
+    type: String,
+    enum: ['pdf', 'txt', 'docx', 'pptx']
+  }],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Instructor',

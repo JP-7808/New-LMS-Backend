@@ -191,7 +191,7 @@ export const searchCoursesByFilters = async (req, res, next) => {
     if (category) {
       query.category = { $regex: new RegExp(`^${category}$`, 'i') };
     }
-    if (language) {
+      if (language && language !== 'all') {  // Add 'all' as default option
       query.language = { $regex: new RegExp(`^${language}$`, 'i') };
     }
     if (level) {
@@ -212,6 +212,8 @@ export const searchCoursesByFilters = async (req, res, next) => {
       }
       sortOption = sortFields.join(' ');
     }
+
+    
 
     // Pagination
     const pageNum = parseInt(page) || 1;
@@ -245,6 +247,28 @@ export const searchCoursesByFilters = async (req, res, next) => {
   }
 };
 
+// controllers/courseController.js - add this new function
+export const getAvailableLanguages = async (req, res, next) => {
+  try {
+    const languages = await Course.aggregate([
+      { $match: { status: 'published' } },
+      { $group: { _id: '$language' } },
+      { $project: { _id: 0, language: '$_id' } },
+      { $sort: { language: 1 } }
+    ]);
+
+    // Add 'all' as the default option
+    const allLanguages = [{ language: 'all' }, ...languages];
+
+    res.status(200).json({
+      success: true,
+      data: allLanguages
+    });
+  } catch (error) {
+    // Remove any course ID specific error handling
+    next(error);
+  }
+};
 // Get course reviews
 export const getCourseReviews = async (req, res, next) => {
   try {
