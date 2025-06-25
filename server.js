@@ -12,6 +12,7 @@ import instructorRoutes from './routes/instructorRoutes.js';
 import courseRoutes from './routes/courseRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
+import downloadRoutes from './routes/downloadRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -52,6 +53,7 @@ app.use('/api/v1/courses', courseRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/contacts', contactRoutes);
 app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/v1/downloads', downloadRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
