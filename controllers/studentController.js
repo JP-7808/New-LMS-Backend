@@ -721,3 +721,74 @@ export const getSupportTickets = async (req, res, next) => {
     next(error);
   }
 };
+
+
+import User from '../models/User.js';
+
+export const bookmarkCourse = async (req, res, next) => {
+  try {
+    const { courseId } = req.params;
+
+    // Find user
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== 'student') {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    // Use Student model for bookmark update
+    const student = await Student.findByIdAndUpdate(
+      req.user.id,
+      { $addToSet: { bookmarkedCourses: courseId } },
+      { new: true }
+    ).populate('bookmarkedCourses');
+
+    res.status(200).json({ success: true, data: student.bookmarkedCourses });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+
+export const removeBookmark = async (req, res, next) => {
+  try {
+    const { courseId } = req.params;
+
+    const student = await Student.findByIdAndUpdate(
+      req.user.id,
+      { $pull: { bookmarkedCourses: courseId } },
+      { new: true }
+    ).populate('bookmarkedCourses');
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    res.status(200).json({ success: true, data: student.bookmarkedCourses });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const getBookmarkedCourses = async (req, res, next) => {
+  try {
+    const student = await Student.findById(req.user.id)
+      .populate({
+        path: 'bookmarkedCourses',
+        model: 'Course'
+      });
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: student.bookmarkedCourses
+    });
+  } catch (error) {
+    next(error);
+  }
+};

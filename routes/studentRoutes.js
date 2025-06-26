@@ -17,7 +17,10 @@ import {
   createSupportTicket,
   getSupportTickets,
   checkStudentStatus,
-  getAssessmentResult
+  getAssessmentResult,
+  bookmarkCourse,
+  removeBookmark,
+  getBookmarkedCourses
 } from '../controllers/studentController.js';
 
 const router = express.Router();
@@ -45,6 +48,10 @@ router.route('/courses/:courseId/progress')
   .put(updateProgress);
 
 
+// Bookmark Courses
+router.patch('/courses/:courseId/bookmark', bookmarkCourse);
+router.delete('/courses/:courseId/bookmark', removeBookmark);
+router.get('/courses/bookmarked', getBookmarkedCourses);
 
   
 router.put('/courses/:courseId/lectures/:lectureId/complete', completeLecture);

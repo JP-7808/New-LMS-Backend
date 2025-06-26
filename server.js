@@ -15,6 +15,7 @@ import contactRoutes from './routes/contactRoutes.js';
 import certificateRoutes from './routes/certificateRoutes.js'
 import notificationRoutes from './routes/notificationRoutes.js'
 import contentRoutes from './routes/contentRoutes.js'
+import downloadRoutes from './routes/downloadRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -58,6 +59,7 @@ app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/certificates', certificateRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/content', contentRoutes);
+app.use('/api/v1/downloads', downloadRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

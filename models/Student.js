@@ -50,6 +50,12 @@ const studentSchema = new mongoose.Schema({
       max: 100
     }
   }],
+  bookmarkedCourses: [ // ✅ NEW FIELD
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course'
+    }
+  ],
   liveClassSessions: [{
     meetingId: String,
     provider: String, // 'zoom', 'jitsi', etc.
@@ -64,7 +70,6 @@ const studentSchema = new mongoose.Schema({
     longest: Number,
     lastActiveDate: Date
   },
-  
 });
 
-export default User.discriminator('student', studentSchema); // Changed 'Student' to 'student'
+export default User.discriminator('student', studentSchema);
