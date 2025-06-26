@@ -90,13 +90,3 @@ export const checkVerified = async (req, res, next) => {
   next();
 };
 
-// Check if user is approved (for students/instructors)
-// export const checkApproved = async (req, res, next) => {
-//   if ((req.user.role === 'student' || req.user.role === 'instructor') && !req.user.approved) {
-//     return res.status(403).json({
-//       success: false,
-//       message: 'Your account is pending admin approval'
-//     });
-//   }
-//   next();
-// };
