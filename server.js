@@ -16,6 +16,7 @@ import certificateRoutes from './routes/certificateRoutes.js'
 import notificationRoutes from './routes/notificationRoutes.js'
 import contentRoutes from './routes/contentRoutes.js'
 import downloadRoutes from './routes/downloadRoutes.js';
+import liveClassRoutes from './routes/liveClassRoutes.js'
 
 dotenv.config();
 const app = express();
@@ -60,6 +61,7 @@ app.use('/api/v1/certificates', certificateRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/content', contentRoutes);
 app.use('/api/v1/downloads', downloadRoutes);
+app.use('/api/v1/live-classes', liveClassRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
