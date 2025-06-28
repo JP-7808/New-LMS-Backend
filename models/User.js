@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto'; // Required for reset token
 
 const userSchema = new mongoose.Schema({
   firstName: {
@@ -76,28 +77,44 @@ const userSchema = new mongoose.Schema({
     default: 'local'
   },
   notificationPreferences: {
-    email: {
-      type: Boolean,
-      default: true
-    },
-    push: {
-      type: Boolean,
-      default: true
-    },
-    inApp: {
-      type: Boolean,
-      default: true
-    }
+    email: { type: Boolean, default: true },
+    push: { type: Boolean, default: true },
+    inApp: { type: Boolean, default: true }
   },
   preferredLanguage: {
     type: String,
     default: 'en',
-    enum: ['en', 'es', 'fr'] // Add more languages as needed
+    enum: ['en', 'es', 'fr']
   },
   fcmToken: {
     type: String,
     select: false
   },
+
+  // ✅ Store badges earned by this user
+  badges: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Badge'
+  }],
+
+  // ✅ Track completed courses
+  completedCourses: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course'
+  }],
+
+  // ✅ Track assessment results with full info
+  assessmentResults: [{
+    course: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course'
+    },
+    score: Number,
+    totalPoints: Number,
+    passed: Boolean,
+    takenAt: Date
+  }],
+
   createdAt: {
     type: Date,
     default: Date.now
@@ -107,39 +124,33 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Hash password before saving
+// 🔐 Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
-// Method to compare passwords
+// 🔐 Method to compare input password with hashed one
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Method to check if password was changed after token was issued
+// 🔐 Method to check if password changed after token issued
 userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
-    if (this.passwordChangedAt) {
-      const changedTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
-      return JWTTimestamp < changedTimestamp;
-    }
-    return false;
-  };
-  
-  // Method to create password reset token
-  userSchema.methods.createPasswordResetToken = function() {
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    
-    this.resetPasswordToken = crypto
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
-    
-    this.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
-    
-    return resetToken;
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
+    return JWTTimestamp < changedTimestamp;
+  }
+  return false;
+};
+
+// 🔐 Method to create password reset token
+userSchema.methods.createPasswordResetToken = function() {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  this.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  this.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+  return resetToken;
 };
 
 const User = mongoose.model('User', userSchema);

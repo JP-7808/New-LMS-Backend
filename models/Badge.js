@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 const badgeSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -15,18 +17,29 @@ const badgeSchema = new mongoose.Schema({
     required: true
   },
   threshold: Number, // e.g., 5 courses completed, 7-day streak, etc.
+  minScore: {
+    type: Number,
+    default: null
+  }, // used for assessment_score badge if applicable
   course: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course'
-  }, // if badge is course-specific
+  }, // for course-specific badges
   isSecret: {
     type: Boolean,
     default: false
+  },
+  isActive: {
+    type: Boolean,
+    default: true
   },
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
+
+// Optional: performance index for filtering badges by type
+badgeSchema.index({ criteria: 1 });
 
 export default mongoose.model('Badge', badgeSchema);

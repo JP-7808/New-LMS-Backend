@@ -8,6 +8,7 @@ import Notification from '../models/Notification.js';
 import SupportTicket from '../models/SupportTicket.js';
 import Payment from '../models/Payment.js'
 import mongoose from 'mongoose';
+import { checkAndAssignBadges } from '../services/badgeService.js';
 
 // Get student profile
 export const getStudentProfile = async (req, res, next) => {
@@ -434,26 +435,40 @@ export const completeLecture = async (req, res, next) => {
     );
 
     // Calculate new overall progress
-    const totalLectures = course.curriculum.reduce(
-      (total, section) => total + section.lectures.length,
-      0
-    );
-    const completedLectures = progress.curriculumProgress.filter(
-      item => item.completed
-    ).length;
-    const newProgress = Math.round((completedLectures / totalLectures) * 100);
+const totalLectures = course.curriculum.reduce(
+  (total, section) => total + section.lectures.length,
+  0
+);
+const completedLectures = progress.curriculumProgress.filter(
+  item => item.completed
+).length;
+const newProgress = Math.round((completedLectures / totalLectures) * 100);
 
-    // Update overall progress
-    progress.overallProgress = newProgress;
-    await progress.save();
+// Update overall progress
+progress.overallProgress = newProgress;
+await progress.save();
 
-    // Update enrollment progress
-    await Enrollment.findOneAndUpdate(
-      { student: req.user.id, course: courseId },
-      { progress: newProgress }
-    );
+// Update enrollment progress
+await Enrollment.findOneAndUpdate(
+  { student: req.user.id, course: courseId },
+  { progress: newProgress }
+);
 
-    res.status(200).json({ success: true, data: progress });
+// ✅ Check for 100% completion and assign badges
+if (newProgress === 100) {
+  const user = await User.findById(req.user.id);
+  if (!user.completedCourses) user.completedCourses = [];
+  if (!user.completedCourses.includes(course._id)) {
+    user.completedCourses.push(course._id);
+    await user.save();
+  }
+
+  // ✅ Trigger badge assignment
+  await checkAndAssignBadges(req.user.id);
+}
+
+res.status(200).json({ success: true, data: progress });
+
   } catch (error) {
     next(error);
   }
@@ -523,18 +538,22 @@ export const getAssessment = async (req, res, next) => {
   }
 };
 
-// Submit assessment
+import Assessment from '../models/Assessment.js';
+import Progress from '../models/Progress.js';
+import User from '../models/User.js';
+import { checkAndAssignBadges } from '../services/badgeService.js';
+
 export const submitAssessment = async (req, res, next) => {
   try {
     const { answers } = req.body;
 
-    // Get assessment
+    // 1. Get assessment
     const assessment = await Assessment.findById(req.params.assessmentId);
     if (!assessment) {
       return res.status(404).json({ success: false, message: 'Assessment not found' });
     }
 
-    // Calculate score
+    // 2. Calculate score
     let score = 0;
     assessment.questions.forEach(question => {
       if (question.questionType === 'multiple_choice') {
@@ -548,10 +567,12 @@ export const submitAssessment = async (req, res, next) => {
           score += question.points;
         }
       }
-      // For other types, manual grading would be needed
     });
 
-    // Update progress
+    const percentage = (score / assessment.totalPoints) * 100;
+    const passed = percentage >= (assessment.passPercentage || 60); // default 60% if not set
+
+    // 3. Update assessment progress in Progress model
     const progress = await Progress.findOneAndUpdate(
       {
         student: req.user.id,
@@ -571,11 +592,29 @@ export const submitAssessment = async (req, res, next) => {
       { new: true }
     );
 
-    res.status(200).json({ success: true, data: progress });
+    // 4. Push assessment result to User
+    await User.findByIdAndUpdate(req.user.id, {
+      $push: {
+        assessmentResults: {
+          course: req.params.courseId,
+          score,
+          totalPoints: assessment.totalPoints,
+          passed,
+          takenAt: new Date()
+        }
+      }
+    });
+
+    // 5. Check and assign badges
+    await checkAndAssignBadges(req.user.id);
+
+    res.status(200).json({ success: true, data: progress, message: `Assessment submitted successfully. ${passed ? 'Passed ✅' : 'Failed ❌'}` });
   } catch (error) {
     next(error);
   }
 };
+
+
 
 // Get result of a specific submitted assessment
 export const getAssessmentResult = async (req, res, next) => {
@@ -787,6 +826,34 @@ export const getBookmarkedCourses = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: student.bookmarkedCourses
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getStudentBadges = async (req, res, next) => {
+  try {
+    const studentId = req.params.id;
+
+    const student = await User.findById(studentId)
+      .select('badges firstName lastName email')
+      .populate({
+        path: 'badges',
+        select: 'name description icon criteria threshold course isSecret createdAt',
+        populate: {
+          path: 'course',
+          select: 'title' // Optional: include course name if course-specific badge
+        }
+      });
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: student.badges
     });
   } catch (error) {
     next(error);

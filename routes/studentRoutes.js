@@ -20,7 +20,8 @@ import {
   getAssessmentResult,
   bookmarkCourse,
   removeBookmark,
-  getBookmarkedCourses
+  getBookmarkedCourses,
+  getStudentBadges
 } from '../controllers/studentController.js';
 
 const router = express.Router();
@@ -70,6 +71,9 @@ router.get('/courses/:courseId/assessments/:assessmentId/result', getAssessmentR
 
 // Certificates
 router.get('/certificates', getCertificates);
+
+// badges
+router.get('/:id/badges', protect, getStudentBadges);
 
 // Notifications
 router.route('/notifications')
