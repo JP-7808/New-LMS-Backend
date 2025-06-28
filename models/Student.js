@@ -3,73 +3,34 @@ import mongoose from 'mongoose';
 import User from './User.js';
 
 const studentSchema = new mongoose.Schema({
-  education: {
-    type: String,
-    trim: true
-  },
-  occupation: {
-    type: String,
-    trim: true
-  },
-  skills: {
-    type: [String]
-  },
-  interests: {
-    type: [String]
-  },
-  points: {
-    type: Number,
-    default: 0
-  },
-  badges: [{
-    name: String,
-    dateEarned: {
-      type: Date,
-      default: Date.now
-    },
-    icon: String
-  }],
-  enrolledCourses: [{
-    course: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Course'
-    },
-    enrollmentDate: {
-      type: Date,
-      default: Date.now
-    },
-    completed: {
-      type: Boolean,
-      default: false
-    },
-    completionDate: Date,
-    progress: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100
-    }
-  }],
-  bookmarkedCourses: [ // ✅ NEW FIELD
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Course'
-    }
-  ],
-  liveClassSessions: [{
-    meetingId: String,
-    provider: String, // 'zoom', 'jitsi', etc.
-    joinUrl: String,
-    startTime: Date,
-    endTime: Date,
-    attended: Boolean
-  }],
+  education: String,
+  occupation: String,
+  skills: [String],
+  interests: [String],
+  points: { type: Number, default: 0 },
   leaderboardPosition: Number,
   streak: {
     current: Number,
     longest: Number,
     lastActiveDate: Date
   },
+  bookmarkedCourses: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course'
+  }],
+  liveClassSessions: [{
+    meetingId: String,
+    provider: String,
+    joinUrl: String,
+    startTime: Date,
+    endTime: Date,
+    attended: Boolean
+  }]
 });
 
-export default User.discriminator('student', studentSchema);
+// ✅ Don’t redefine fields like badges or completedCourses if already in User
+// ✅ Only include unique student fields here
+
+const Student = User.discriminator('student', studentSchema);
+export default Student;
+

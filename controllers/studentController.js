@@ -538,10 +538,6 @@ export const getAssessment = async (req, res, next) => {
   }
 };
 
-import Assessment from '../models/Assessment.js';
-import Progress from '../models/Progress.js';
-import User from '../models/User.js';
-import { checkAndAssignBadges } from '../services/badgeService.js';
 
 export const submitAssessment = async (req, res, next) => {
   try {
