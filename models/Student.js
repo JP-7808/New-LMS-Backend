@@ -3,34 +3,72 @@ import mongoose from 'mongoose';
 import User from './User.js';
 
 const studentSchema = new mongoose.Schema({
-  education: String,
-  occupation: String,
-  skills: [String],
-  interests: [String],
-  points: { type: Number, default: 0 },
-  leaderboardPosition: Number,
-  streak: {
-    current: Number,
-    longest: Number,
-    lastActiveDate: Date
+  education: {
+    type: String,
+    trim: true
   },
+  occupation: {
+    type: String,
+    trim: true
+  },
+  skills: {
+    type: [String]
+  },
+  interests: {
+    type: [String]
+  },
+  points: {
+    type: Number,
+    default: 0
+  },
+  // ✅ Remove this version of badges — it's already defined in User.js as ObjectIds.
+  // Keeping this here causes the crash.
+  // badges: [{ name: ..., dateEarned: ..., icon: ... }],
+
+  enrolledCourses: [{
+    course: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course'
+    },
+    enrollmentDate: {
+      type: Date,
+      default: Date.now
+    },
+    completed: {
+      type: Boolean,
+      default: false
+    },
+    completionDate: Date,
+    progress: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100
+    }
+  }],
+
   bookmarkedCourses: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course'
   }],
+
   liveClassSessions: [{
     meetingId: String,
-    provider: String,
+    provider: String, // 'zoom', 'jitsi', etc.
     joinUrl: String,
     startTime: Date,
     endTime: Date,
     attended: Boolean
-  }]
+  }],
+
+  leaderboardPosition: Number,
+
+  streak: {
+    current: Number,
+    longest: Number,
+    lastActiveDate: Date
+  }
 });
 
-// ✅ Don’t redefine fields like badges or completedCourses if already in User
-// ✅ Only include unique student fields here
-
-const Student = User.discriminator('student', studentSchema);
-export default Student;
+export default User.discriminator('student', studentSchema);
 
