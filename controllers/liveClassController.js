@@ -79,8 +79,7 @@ export const createLiveClass = async (req, res) => {
     const token = await generateZoomToken();
     let zoomResponse;
     try {
-      const zoomUserEmail = instructor.email; // Use instructor's email
-      console.log('Sending Zoom API request to:', `https://api.zoom.us/v2/users/${zoomUserEmail}/meetings`);
+      console.log('Sending Zoom API request to: https://api.zoom.us/v2/users/me/meetings');
       console.log('Zoom request body:', JSON.stringify({
         topic: title,
         type: 2,
@@ -97,7 +96,7 @@ export const createLiveClass = async (req, res) => {
         },
       }, null, 2));
       zoomResponse = await axios.post(
-        `https://api.zoom.us/v2/users/${zoomUserEmail}/meetings`,
+        'https://api.zoom.us/v2/users/me/meetings',
         {
           topic: title,
           type: 2, // Scheduled meeting
