@@ -107,8 +107,8 @@ export const generateCertificate = async (req, res) => {
       designOptions: {
         template: 'default',
         colors: { primary: '#1a73e8', secondary: '#ffffff' },
-        logo: 'https://res.cloudinary.com/dcgilmdbm/image/upload/v1747893719/lms_logo.jpg',
-        signature: issuer.signature || 'default_signature.png',
+        logo: 'https://res.cloudinary.com/dcgilmdbm/image/upload/v1750743192/pexels-eileenlamb-3225499_ehialm.jpg',
+        signature: issuer.signature || 'https://res.cloudinary.com/dcgilmdbm/image/upload/v1750743318/pexels-cottonbro-6466301_ftlwy5.jpg',
       },
       metadata: {
         hash: uploadResult.public_id,
