@@ -1,33 +1,39 @@
 import express from 'express';
-import { protect, authorize, checkVerified } from '../middleware/auth.js';
 import {
   generateCertificate,
-  getCertificateById,
+  getCertificate,
   verifyCertificate,
-  getStudentCertificates,
   revokeCertificate,
-  updateCertificateDesign
+  getStudentCertificates,
 } from '../controllers/certificateController.js';
+import { protect, authorize, checkVerified } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Routes for certificate management
 router.route('/')
-  .get(protect, authorize(['student', 'admin']), checkVerified, getStudentCertificates);
-
-router.route('/generate')
-  .post(protect, authorize(['admin', 'instructor']), checkVerified, generateCertificate);
+  .post(
+    protect,
+    checkVerified,
+    authorize(['admin', 'instructor']),
+    generateCertificate
+  );
 
 router.route('/:id')
-  .get(protect, authorize(['student', 'admin', 'instructor']), checkVerified, getCertificateById);
+  .get(protect, checkVerified, getCertificate);
 
-router.route('/verify/:certificateId')
-  .get(verifyCertificate);
+router.route('/verify')
+  .get(verifyCertificate); // Public route for verification
 
-router.route('/revoke/:id')
-  .put(protect, authorize(['admin']), checkVerified, revokeCertificate);
+router.route('/:certificateId/revoke')
+  .put(
+    protect,
+    checkVerified,
+    authorize(['admin', 'instructor']),
+    revokeCertificate
+  );
 
-router.route('/design/:id')
-  .put(protect, authorize(['admin', 'instructor']), checkVerified, updateCertificateDesign);
+router.route('/student/:studentId')
+  .get(protect, checkVerified, getStudentCertificates);
 
 export default router;
