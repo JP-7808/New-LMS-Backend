@@ -855,3 +855,107 @@ export const getStudentBadges = async (req, res, next) => {
     next(error);
   }
 };
+
+// controllers/studentAnalyticsController.js
+
+
+// GET /api/student-analytics/me
+export const getMyStudentAnalytics = async (req, res) => {
+  try {
+    const student = await Student.findById(req.user._id)
+      .populate('enrolledCourses.course', 'title')
+      .lean();
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    const totalCourses = student.enrolledCourses.length;
+    const completedCourses = student.enrolledCourses.filter(c => c.completed).length;
+    const attendance = student.liveClassSessions || [];
+    const attendedSessions = attendance.filter(s => s.attended).length;
+
+    res.json({
+      points: student.points,
+      badges: student.badges,
+      totalCourses,
+      completedCourses,
+      attendanceRate: attendance.length
+        ? Math.round((attendedSessions / attendance.length) * 100)
+        : 0,
+      leaderboardPosition: student.leaderboardPosition,
+      streak: student.streak,
+      enrolledCourses: student.enrolledCourses
+        .filter(c => c.course) // filter out null or missing courses
+        .map(c => ({
+          title: c.course.title,
+          progress: c.progress,
+          completed: c.completed
+        }))
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: 'Server Error',
+      error: err.message
+    });
+  }
+};
+
+
+// GET /api/student-analytics/all (Admin)
+export const getAllStudentAnalytics = async (req, res) => {
+  try {
+    const students = await Student.find()
+      .select('firstName lastName points badges enrolledCourses liveClassSessions leaderboardPosition streak')
+      .populate('enrolledCourses.course', 'title')
+      .lean();
+
+    const analytics = students.map(student => {
+      const totalCourses = student.enrolledCourses.length;
+      const completedCourses = student.enrolledCourses.filter(c => c.completed).length;
+      const attendedSessions = student.liveClassSessions?.filter(s => s.attended).length || 0;
+      const totalSessions = student.liveClassSessions?.length || 0;
+      return {
+        name: `${student.firstName} ${student.lastName}`,
+        points: student.points,
+        badges: student.badges.length,
+        totalCourses,
+        completedCourses,
+        attendanceRate: totalSessions ? Math.round((attendedSessions / totalSessions) * 100) : 0,
+        leaderboardPosition: student.leaderboardPosition,
+        streak: student.streak,
+        enrolledCourses: student.enrolledCourses.map(c => ({
+          title: c.course?.title || 'Unknown',
+          progress: c.progress
+        }))
+      };
+    });
+
+    res.json(analytics);
+  } catch (err) {
+    res.status(500).json({ message: 'Server Error', error: err.message });
+  }
+};
+
+// GET /api/student-analytics/top?limit=10
+export const getTopStudentsAnalytics = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+
+    const students = await Student.find()
+      .sort({ points: -1 })
+      .limit(limit)
+      .select('firstName lastName points leaderboardPosition')
+      .lean();
+
+    const leaderboard = students.map(s => ({
+      name: `${s.firstName} ${s.lastName}`,
+      points: s.points,
+      leaderboardPosition: s.leaderboardPosition
+    }));
+
+    res.json(leaderboard);
+  } catch (err) {
+    res.status(500).json({ message: 'Server Error', error: err.message });
+  }
+};
