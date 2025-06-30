@@ -21,10 +21,22 @@ import {
   bookmarkCourse,
   removeBookmark,
   getBookmarkedCourses,
-  getStudentBadges
+  getStudentBadges,
+  getMyStudentAnalytics,
+  getAllStudentAnalytics,
+  getTopStudentsAnalytics
 } from '../controllers/studentController.js';
 
 const router = express.Router();
+
+// Student route to view own analytics
+router.get('/me', protect, authorize('student'), getMyStudentAnalytics);
+
+// Admin route to view all students' analytics
+router.get('/all', protect, authorize('admin'), getAllStudentAnalytics);
+
+// Admin route to view top students
+router.get('/top', protect, authorize('admin'), getTopStudentsAnalytics);
 
 // Protect all routes
 router.use(protect);
