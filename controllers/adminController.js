@@ -46,7 +46,6 @@ export const enrollInstructor = async (req, res, next) => {
   }
 };
 
-
 // Toggle Instructor Active Status (Admin)
 export const InstructorActiveStatus = async (req, res, next) => {
     try {
@@ -363,6 +362,52 @@ export const approveCourse = async (req, res, next) => {
   }
 };
 
+// Get Course Students (Admin)
+export const getCourseStudents = async (req, res, next) => {
+  try {
+    const { courseId } = req.params;
+
+    // Validate course ID
+    if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid course ID'
+      });
+    }
+
+    // Check if the course exists
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found' });
+    }
+
+    // Fetch enrollments and populate student data
+    const enrollments = await Enrollment.find({ course: courseId })
+      .populate({
+        path: 'student',
+        select: 'firstName lastName email avatar',
+        model: 'User', // Fallback to User model
+        match: { role: 'student' } // Ensure only students are populated
+      })
+      .sort({ enrollmentDate: -1 });
+
+    // Calculate total number of students
+    const totalStudents = enrollments.length;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        course: { id: course._id, title: course.title },
+        totalStudents,
+        enrollments
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching course students:', error);
+    next(error);
+  }
+};
+
 // Get Detailed Enrollment Analytics
 export const getEnrollmentAnalytics = async (req, res, next) => {
     try {
@@ -525,7 +570,7 @@ export const getInstructorActivity = async (req, res, next) => {
   try {
     const activities = await Course.find({ status: 'published' })
       .populate('instructor', 'firstName lastName email')
-      .sort({ createdAt: -1 })
+      .sort({ createdCabAt: -1 })
       .limit(50)
       .select('title instructor createdAt');
     res.status(200).json({ success: true, data: activities });
@@ -533,7 +578,6 @@ export const getInstructorActivity = async (req, res, next) => {
     next(error);
   }
 };
-
 
 // Export Progress Report (Admin)
 export const exportProgressReport = async (req, res, next) => {
@@ -604,62 +648,6 @@ export const getStudentProgress = async (req, res, next) => {
       next(error);
     }
 };
-
-// Activate Course for Student After Payment
-// export const activateCourseForStudent = async (req, res, next) => {
-//   try {
-//     const { studentId, courseId } = req.params;
-
-//     // Check if the student and course exist
-//     const student = await Student.findById(studentId);
-//     if (!student) {
-//       return res.status(404).json({ success: false, message: 'Student not found' });
-//     }
-
-//     const course = await Course.findById(courseId);
-//     if (!course) {
-//       return res.status(404).json({ success: false, message: 'Course not found' });
-//     }
-
-//     // Check if the student is enrolled in the course
-//     const enrollment = await Enrollment.findOne({ student: studentId, course: courseId });
-//     if (!enrollment) {
-//       return res.status(404).json({ success: false, message: 'Student not enrolled in this course' });
-//     }
-
-//     // Check if payment is completed
-//     const payment = await Payment.findOne({ student: studentId, course: courseId, status: 'completed' });
-//     if (!payment) {
-//       return res.status(400).json({ success: false, message: 'Payment not completed for this course' });
-//     }
-
-//     // Activate the course for the student by updating the enrollment
-//     enrollment.isActive = true;
-//     enrollment.activatedAt = Date.now();
-//     await enrollment.save();
-
-//     // Ensure progress record exists for the student
-//     let progress = await Progress.findOne({ student: studentId, course: courseId });
-//     if (!progress) {
-//       progress = await Progress.create({
-//         student: studentId,
-//         course: courseId,
-//         overallProgress: 0,
-//         curriculumProgress: [],
-//         assessmentProgress: [],
-//         lastAccessed: Date.now()
-//       });
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       message: 'Course activated for the student successfully',
-//       data: { enrollment, progress }
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
 
 // Get Courses by Instructor
 export const getCoursesByInstructor = async (req, res, next) => {
