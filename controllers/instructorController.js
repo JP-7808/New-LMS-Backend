@@ -299,6 +299,140 @@ export const uploadCourseContent = async (req, res, next) => {
   }
 };
 
+
+// Update course content
+export const updateCourseContent = async (req, res, next) => {
+  try {
+    const { contentId } = req.params;
+    const { sectionId, lectureId, title, description, type, isDownloadable, note } = req.body;
+
+    // Validate contentId
+    if (!mongoose.Types.ObjectId.isValid(contentId)) {
+      return res.status(400).json({ success: false, message: 'Invalid content ID' });
+    }
+
+    // Find the course and verify instructor ownership
+    const course = await Course.findOne({
+      _id: req.params.id,
+      instructor: req.user.id
+    });
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or not authorized' });
+    }
+
+    // Find the section and lecture
+    const section = course.curriculum.id(sectionId);
+    if (!section) {
+      return res.status(404).json({ success: false, message: 'Section not found' });
+    }
+
+    const lecture = section.lectures.id(lectureId);
+    if (!lecture) {
+      return res.status(404).json({ success: false, message: 'Lecture not found' });
+    }
+
+    // Find the content
+    const content = await Content.findOne({
+      _id: contentId,
+      course: req.params.id,
+      createdBy: req.user.id
+    });
+
+    if (!content) {
+      return res.status(404).json({ success: false, message: 'Content not found or not authorized' });
+    }
+
+    // Update content fields
+    content.title = title || content.title;
+    content.description = description || content.description;
+    content.type = type || content.type;
+    content.isDownloadable = isDownloadable !== undefined ? isDownloadable : content.isDownloadable;
+
+    // Update file if a new one is uploaded
+    if (req.file) {
+      // Delete old file from Cloudinary if it exists
+      if (content.cloudinaryPublicId) {
+        await cloudinary.uploader.destroy(content.cloudinaryPublicId);
+      }
+      content.url = req.file.path;
+      content.cloudinaryPublicId = req.file.filename;
+      content.fileSize = req.file.size;
+      content.fileFormat = req.file.mimetype;
+    }
+
+    await content.save();
+
+    // Update lecture note if provided
+    if (note !== undefined) {
+      lecture.note = note;
+      await course.save();
+    }
+
+    res.status(200).json({ success: true, data: content });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Delete course content
+export const deleteCourseContent = async (req, res, next) => {
+  try {
+    const { contentId } = req.params;
+
+    // Validate contentId
+    if (!mongoose.Types.ObjectId.isValid(contentId)) {
+      return res.status(400).json({ success: false, message: 'Invalid content ID' });
+    }
+
+    // Find the course and verify instructor ownership
+    const course = await Course.findOne({
+      _id: req.params.id,
+      instructor: req.user.id
+    });
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or not authorized' });
+    }
+
+    // Find the content
+    const content = await Content.findOne({
+      _id: contentId,
+      course: req.params.id,
+      createdBy: req.user.id
+    });
+
+    if (!content) {
+      return res.status(404).json({ success: false, message: 'Content not found or not authorized' });
+    }
+
+    // Remove content reference from course curriculum
+    course.curriculum.forEach(section => {
+      section.lectures.forEach(lecture => {
+        if (lecture.content && lecture.content.toString() === contentId) {
+          lecture.content = null;
+        }
+      });
+    });
+
+    // Delete file from Cloudinary if it exists
+    if (content.cloudinaryPublicId) {
+      await cloudinary.uploader.destroy(content.cloudinaryPublicId);
+    }
+
+    // Delete the content from the database
+    await Content.findByIdAndDelete(contentId);
+
+    // Save the updated course
+    await course.save();
+
+    res.status(200).json({ success: true, message: 'Content deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 // Get course students
 export const getCourseStudents = async (req, res, next) => {
   try {
