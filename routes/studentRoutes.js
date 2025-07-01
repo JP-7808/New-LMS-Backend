@@ -17,10 +17,26 @@ import {
   createSupportTicket,
   getSupportTickets,
   checkStudentStatus,
-  getAssessmentResult
+  getAssessmentResult,
+  bookmarkCourse,
+  removeBookmark,
+  getBookmarkedCourses,
+  getStudentBadges,
+  getMyStudentAnalytics,
+  getAllStudentAnalytics,
+  getTopStudentsAnalytics
 } from '../controllers/studentController.js';
 
 const router = express.Router();
+
+// Student route to view own analytics
+router.get('/me', protect, authorize('student'), getMyStudentAnalytics);
+
+// Admin route to view all students' analytics
+router.get('/all', protect, authorize('admin'), getAllStudentAnalytics);
+
+// Admin route to view top students
+router.get('/top', protect, authorize('admin'), getTopStudentsAnalytics);
 
 // Protect all routes
 router.use(protect);
@@ -45,6 +61,10 @@ router.route('/courses/:courseId/progress')
   .put(updateProgress);
 
 
+// Bookmark Courses
+router.patch('/courses/:courseId/bookmark', bookmarkCourse);
+router.delete('/courses/:courseId/bookmark', removeBookmark);
+router.get('/courses/bookmarked', getBookmarkedCourses);
 
   
 router.put('/courses/:courseId/lectures/:lectureId/complete', completeLecture);
@@ -63,6 +83,9 @@ router.get('/courses/:courseId/assessments/:assessmentId/result', getAssessmentR
 
 // Certificates
 router.get('/certificates', getCertificates);
+
+// badges
+router.get('/:id/badges', protect, getStudentBadges);
 
 // Notifications
 router.route('/notifications')

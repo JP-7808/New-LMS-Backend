@@ -11,6 +11,8 @@ import {
   uploadCourseThumbnail,
   uploadCoursePromoVideo,
   uploadCourseContent,
+  updateCourseContent,
+  deleteCourseContent,
   getCourseStudents,
   getStudentProgress,
   createAssessment,
@@ -48,6 +50,8 @@ router.route('/courses/:id')
 router.post('/courses/:id/thumbnail', uploadThumbnail, uploadCourseThumbnail);
 router.post('/courses/:id/promo-video', uploadPromoVideo, uploadCoursePromoVideo);
 router.post('/courses/:id/content', uploadContent, uploadCourseContent);
+router.put('/courses/:id/content/:contentId', uploadContent, updateCourseContent);
+router.delete('/courses/:id/content/:contentId', deleteCourseContent);
 
 // Student progress
 router.get('/courses/:courseId/students', getCourseStudents);

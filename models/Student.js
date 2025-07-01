@@ -21,14 +21,10 @@ const studentSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  badges: [{
-    name: String,
-    dateEarned: {
-      type: Date,
-      default: Date.now
-    },
-    icon: String
-  }],
+  // ✅ Remove this version of badges — it's already defined in User.js as ObjectIds.
+  // Keeping this here causes the crash.
+  // badges: [{ name: ..., dateEarned: ..., icon: ... }],
+
   enrolledCourses: [{
     course: {
       type: mongoose.Schema.Types.ObjectId,
@@ -50,6 +46,12 @@ const studentSchema = new mongoose.Schema({
       max: 100
     }
   }],
+
+  bookmarkedCourses: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course'
+  }],
+
   liveClassSessions: [{
     meetingId: String,
     provider: String, // 'zoom', 'jitsi', etc.
@@ -58,13 +60,15 @@ const studentSchema = new mongoose.Schema({
     endTime: Date,
     attended: Boolean
   }],
+
   leaderboardPosition: Number,
+
   streak: {
     current: Number,
     longest: Number,
     lastActiveDate: Date
-  },
-  
+  }
 });
 
-export default User.discriminator('student', studentSchema); // Changed 'Student' to 'student'
+export default User.discriminator('student', studentSchema);
+

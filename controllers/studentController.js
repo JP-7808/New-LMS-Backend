@@ -8,6 +8,7 @@ import Notification from '../models/Notification.js';
 import SupportTicket from '../models/SupportTicket.js';
 import Payment from '../models/Payment.js'
 import mongoose from 'mongoose';
+import { checkAndAssignBadges } from '../services/badgeService.js';
 
 // Get student profile
 export const getStudentProfile = async (req, res, next) => {
@@ -434,26 +435,40 @@ export const completeLecture = async (req, res, next) => {
     );
 
     // Calculate new overall progress
-    const totalLectures = course.curriculum.reduce(
-      (total, section) => total + section.lectures.length,
-      0
-    );
-    const completedLectures = progress.curriculumProgress.filter(
-      item => item.completed
-    ).length;
-    const newProgress = Math.round((completedLectures / totalLectures) * 100);
+const totalLectures = course.curriculum.reduce(
+  (total, section) => total + section.lectures.length,
+  0
+);
+const completedLectures = progress.curriculumProgress.filter(
+  item => item.completed
+).length;
+const newProgress = Math.round((completedLectures / totalLectures) * 100);
 
-    // Update overall progress
-    progress.overallProgress = newProgress;
-    await progress.save();
+// Update overall progress
+progress.overallProgress = newProgress;
+await progress.save();
 
-    // Update enrollment progress
-    await Enrollment.findOneAndUpdate(
-      { student: req.user.id, course: courseId },
-      { progress: newProgress }
-    );
+// Update enrollment progress
+await Enrollment.findOneAndUpdate(
+  { student: req.user.id, course: courseId },
+  { progress: newProgress }
+);
 
-    res.status(200).json({ success: true, data: progress });
+// ✅ Check for 100% completion and assign badges
+if (newProgress === 100) {
+  const user = await User.findById(req.user.id);
+  if (!user.completedCourses) user.completedCourses = [];
+  if (!user.completedCourses.includes(course._id)) {
+    user.completedCourses.push(course._id);
+    await user.save();
+  }
+
+  // ✅ Trigger badge assignment
+  await checkAndAssignBadges(req.user.id);
+}
+
+res.status(200).json({ success: true, data: progress });
+
   } catch (error) {
     next(error);
   }
@@ -523,18 +538,18 @@ export const getAssessment = async (req, res, next) => {
   }
 };
 
-// Submit assessment
+
 export const submitAssessment = async (req, res, next) => {
   try {
     const { answers } = req.body;
 
-    // Get assessment
+    // 1. Get assessment
     const assessment = await Assessment.findById(req.params.assessmentId);
     if (!assessment) {
       return res.status(404).json({ success: false, message: 'Assessment not found' });
     }
 
-    // Calculate score
+    // 2. Calculate score
     let score = 0;
     assessment.questions.forEach(question => {
       if (question.questionType === 'multiple_choice') {
@@ -548,10 +563,12 @@ export const submitAssessment = async (req, res, next) => {
           score += question.points;
         }
       }
-      // For other types, manual grading would be needed
     });
 
-    // Update progress
+    const percentage = (score / assessment.totalPoints) * 100;
+    const passed = percentage >= (assessment.passPercentage || 60); // default 60% if not set
+
+    // 3. Update assessment progress in Progress model
     const progress = await Progress.findOneAndUpdate(
       {
         student: req.user.id,
@@ -571,11 +588,29 @@ export const submitAssessment = async (req, res, next) => {
       { new: true }
     );
 
-    res.status(200).json({ success: true, data: progress });
+    // 4. Push assessment result to User
+    await User.findByIdAndUpdate(req.user.id, {
+      $push: {
+        assessmentResults: {
+          course: req.params.courseId,
+          score,
+          totalPoints: assessment.totalPoints,
+          passed,
+          takenAt: new Date()
+        }
+      }
+    });
+
+    // 5. Check and assign badges
+    await checkAndAssignBadges(req.user.id);
+
+    res.status(200).json({ success: true, data: progress, message: `Assessment submitted successfully. ${passed ? 'Passed ✅' : 'Failed ❌'}` });
   } catch (error) {
     next(error);
   }
 };
+
+
 
 // Get result of a specific submitted assessment
 export const getAssessmentResult = async (req, res, next) => {
@@ -719,5 +754,208 @@ export const getSupportTickets = async (req, res, next) => {
     res.status(200).json({ success: true, data: tickets });
   } catch (error) {
     next(error);
+  }
+};
+
+
+import User from '../models/User.js';
+
+export const bookmarkCourse = async (req, res, next) => {
+  try {
+    const { courseId } = req.params;
+
+    // Find user
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== 'student') {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    // Use Student model for bookmark update
+    const student = await Student.findByIdAndUpdate(
+      req.user.id,
+      { $addToSet: { bookmarkedCourses: courseId } },
+      { new: true }
+    ).populate('bookmarkedCourses');
+
+    res.status(200).json({ success: true, data: student.bookmarkedCourses });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+
+export const removeBookmark = async (req, res, next) => {
+  try {
+    const { courseId } = req.params;
+
+    const student = await Student.findByIdAndUpdate(
+      req.user.id,
+      { $pull: { bookmarkedCourses: courseId } },
+      { new: true }
+    ).populate('bookmarkedCourses');
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    res.status(200).json({ success: true, data: student.bookmarkedCourses });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const getBookmarkedCourses = async (req, res, next) => {
+  try {
+    const student = await Student.findById(req.user.id)
+      .populate({
+        path: 'bookmarkedCourses',
+        model: 'Course'
+      });
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: student.bookmarkedCourses
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getStudentBadges = async (req, res, next) => {
+  try {
+    const studentId = req.params.id;
+
+    const student = await User.findById(studentId)
+      .select('badges firstName lastName email')
+      .populate({
+        path: 'badges',
+        select: 'name description icon criteria threshold course isSecret createdAt',
+        populate: {
+          path: 'course',
+          select: 'title' // Optional: include course name if course-specific badge
+        }
+      });
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: student.badges
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// controllers/studentAnalyticsController.js
+
+
+// GET /api/student-analytics/me
+export const getMyStudentAnalytics = async (req, res) => {
+  try {
+    const student = await Student.findById(req.user._id)
+      .populate('enrolledCourses.course', 'title')
+      .lean();
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    const totalCourses = student.enrolledCourses.length;
+    const completedCourses = student.enrolledCourses.filter(c => c.completed).length;
+    const attendance = student.liveClassSessions || [];
+    const attendedSessions = attendance.filter(s => s.attended).length;
+
+    res.json({
+      points: student.points,
+      badges: student.badges,
+      totalCourses,
+      completedCourses,
+      attendanceRate: attendance.length
+        ? Math.round((attendedSessions / attendance.length) * 100)
+        : 0,
+      leaderboardPosition: student.leaderboardPosition,
+      streak: student.streak,
+      enrolledCourses: student.enrolledCourses
+        .filter(c => c.course) // filter out null or missing courses
+        .map(c => ({
+          title: c.course.title,
+          progress: c.progress,
+          completed: c.completed
+        }))
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: 'Server Error',
+      error: err.message
+    });
+  }
+};
+
+
+// GET /api/student-analytics/all (Admin)
+export const getAllStudentAnalytics = async (req, res) => {
+  try {
+    const students = await Student.find()
+      .select('firstName lastName points badges enrolledCourses liveClassSessions leaderboardPosition streak')
+      .populate('enrolledCourses.course', 'title')
+      .lean();
+
+    const analytics = students.map(student => {
+      const totalCourses = student.enrolledCourses.length;
+      const completedCourses = student.enrolledCourses.filter(c => c.completed).length;
+      const attendedSessions = student.liveClassSessions?.filter(s => s.attended).length || 0;
+      const totalSessions = student.liveClassSessions?.length || 0;
+      return {
+        name: `${student.firstName} ${student.lastName}`,
+        points: student.points,
+        badges: student.badges.length,
+        totalCourses,
+        completedCourses,
+        attendanceRate: totalSessions ? Math.round((attendedSessions / totalSessions) * 100) : 0,
+        leaderboardPosition: student.leaderboardPosition,
+        streak: student.streak,
+        enrolledCourses: student.enrolledCourses.map(c => ({
+          title: c.course?.title || 'Unknown',
+          progress: c.progress
+        }))
+      };
+    });
+
+    res.json(analytics);
+  } catch (err) {
+    res.status(500).json({ message: 'Server Error', error: err.message });
+  }
+};
+
+// GET /api/student-analytics/top?limit=10
+export const getTopStudentsAnalytics = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+
+    const students = await Student.find()
+      .sort({ points: -1 })
+      .limit(limit)
+      .select('firstName lastName points leaderboardPosition')
+      .lean();
+
+    const leaderboard = students.map(s => ({
+      name: `${s.firstName} ${s.lastName}`,
+      points: s.points,
+      leaderboardPosition: s.leaderboardPosition
+    }));
+
+    res.json(leaderboard);
+  } catch (err) {
+    res.status(500).json({ message: 'Server Error', error: err.message });
   }
 };

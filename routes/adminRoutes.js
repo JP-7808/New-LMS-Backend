@@ -2,8 +2,8 @@ import express from 'express';
 import {
   enrollInstructor,
   enrollStudent,
-  getAllInstructors, // New
-  getAllStudents,  // New
+  getAllInstructors,
+  getAllStudents,
   createCourse,
   updateCourse,
   deleteCourse,
@@ -19,12 +19,12 @@ import {
   getTicketMetrics,
   exportProgressReport,
   getStudentProgress,
-  // activateCourseForStudent,
   getCoursesByInstructor,
   InstructorActiveStatus,
   StudentActiveStatus,
   downloadSupportTicket,
-  getTotalEnrollments
+  getTotalEnrollments,
+  getCourseStudents
 } from '../controllers/adminController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { uploadThumbnail, uploadPromoVideo } from '../middleware/uploadMiddleware.js';
@@ -39,8 +39,8 @@ router.post('/users/instructors', enrollInstructor);
 router.patch('/users/instructors/:instructorId/toggle-active', InstructorActiveStatus);
 router.post('/users/students', enrollStudent);
 router.patch('/users/students/:studentId/toggle-active', StudentActiveStatus);
-router.get('/users/instructors', getAllInstructors); // New
-router.get('/users/students', getAllStudents);      // New
+router.get('/users/instructors', getAllInstructors);
+router.get('/users/students', getAllStudents);
 
 // Course Management Routes
 router.post('/courses', createCourse);
@@ -58,6 +58,9 @@ router.post('/courses/:id/promo-video', uploadPromoVideo, (req, res, next) => {
   next();
 }, updateCourse);
 
+// Course Students Route
+router.get('/courses/:courseId/students', getCourseStudents);
+
 // Analytics Routes
 router.get('/analytics/enrollments', getEnrollmentAnalytics);
 router.get('/analytics/total-enrollments', getTotalEnrollments);
@@ -70,9 +73,6 @@ router.get('/analytics/export-progress', exportProgressReport);
 
 // Student Progress Route
 router.get('/students/:studentId/courses/:courseId/progress', getStudentProgress);
-
-// Course Activation for Student After Payment
-// router.patch('/students/:studentId/courses/:courseId/activate', activateCourseForStudent);
 
 // View Courses by Instructor
 router.get('/instructors/:instructorId/courses', getCoursesByInstructor);

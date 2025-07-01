@@ -12,6 +12,12 @@ import instructorRoutes from './routes/instructorRoutes.js';
 import courseRoutes from './routes/courseRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
+import certificateRoutes from './routes/certificateRoutes.js'
+import notificationRoutes from './routes/notificationRoutes.js'
+import contentRoutes from './routes/contentRoutes.js'
+import downloadRoutes from './routes/downloadRoutes.js';
+import liveClassRoutes from './routes/liveClassRoutes.js'
+import progressRoutes from './routes/progressRoutes.js'
 
 dotenv.config();
 const app = express();
@@ -52,6 +58,12 @@ app.use('/api/v1/courses', courseRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/contacts', contactRoutes);
 app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/v1/certificates', certificateRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/content', contentRoutes);
+app.use('/api/v1/downloads', downloadRoutes);
+app.use('/api/v1/live-classes', liveClassRoutes);
+app.use('/api/v1/progress', progressRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
