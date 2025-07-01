@@ -1,111 +1,119 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto'; // Added for createPasswordResetToken
 
-const userSchema = new mongoose.Schema({
-  firstName: {
-    type: String,
-    required: [true, 'First name is required'],
-    trim: true
-  },
-  lastName: {
-    type: String,
-    required: [true, 'Last name is required'],
-    trim: true
-  },
-  email: {
-    type: String,
-    required: [true, 'Email is required'],
-    unique: true,
-    trim: true,
-    lowercase: true,
-    match: [/\S+@\S+\.\S+/, 'Please enter a valid email']
-  },
-  password: {
-    type: String,
-    required: [true, 'Password is required'],
-    minlength: [8, 'Password must be at least 8 characters'],
-    select: false
-  },
-  phone: {
-    type: String,
-    trim: true
-  },
-  avatar: {
-    type: String,
-    default: 'https://res.cloudinary.com/dcgilmdbm/image/upload/v1747893719/default_avatar_xpw8jv.jpg'
-  },
-  role: {
-    type: String,
-    enum: ['admin', 'instructor', 'student'],
-    required: true
-  },
-  isVerified: {
-    type: Boolean,
-    default: false
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  lastLogin: {
-    type: Date
-  },
-  otp: {
-    type: String,
-    select: false
-  },
-  otpExpires: {
-    type: Date,
-    select: false
-  },
-  resetPasswordToken: {
-    type: String,
-    select: false
-  },
-  resetPasswordExpire: {
-    type: Date,
-    select: false
-  },
-  googleId: {
-    type: String,
-    select: false
-  },
-  provider: {
-    type: String,
-    enum: ['local', 'google'],
-    default: 'local'
-  },
-  notificationPreferences: {
+const userSchema = new mongoose.Schema(
+  {
+    firstName: {
+      type: String,
+      required: [true, 'First name is required'],
+      trim: true
+    },
+    lastName: {
+      type: String,
+      required: [true, 'Last name is required'],
+      trim: true
+    },
     email: {
+      type: String,
+      required: [true, 'Email is required'],
+      unique: true,
+      trim: true,
+      lowercase: true,
+      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email']
+    },
+    password: {
+      type: String,
+      required: [true, 'Password is required'],
+      minlength: [8, 'Password must be at least 8 characters'],
+      select: false
+    },
+    phone: {
+      type: String,
+      trim: true
+    },
+    avatar: {
+      type: String,
+      default: 'https://res.cloudinary.com/dcgilmdbm/image/upload/v1747893719/default_avatar_xpw8jv.jpg'
+    },
+    role: {
+      type: String,
+      enum: ['admin', 'instructor', 'student'],
+      required: true
+    },
+    isVerified: {
+      type: Boolean,
+      default: false
+    },
+    isActive: {
       type: Boolean,
       default: true
     },
-    push: {
-      type: Boolean,
-      default: true
+    lastLogin: {
+      type: Date
     },
-    inApp: {
-      type: Boolean,
-      default: true
+    otp: {
+      type: String,
+      select: false
+    },
+    otpExpires: {
+      type: Date,
+      select: false
+    },
+    resetPasswordToken: {
+      type: String,
+      select: false
+    },
+    resetPasswordExpire: {
+      type: Date,
+      select: false
+    },
+    googleId: {
+      type: String,
+      select: false
+    },
+    provider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local'
+    },
+    notificationPreferences: {
+      email: {
+        type: Boolean,
+        default: true
+      },
+      push: {
+        type: Boolean,
+        default: true
+      },
+      inApp: {
+        type: Boolean,
+        default: true
+      }
+    },
+    preferredLanguage: {
+      type: String,
+      default: 'en',
+      enum: ['en', 'es', 'fr'] // Add more languages as needed
+    },
+    fcmToken: {
+      type: String,
+      select: false
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
     }
   },
-  preferredLanguage: {
-    type: String,
-    default: 'en',
-    enum: ['en', 'es', 'fr'] // Add more languages as needed
-  },
-  fcmToken: {
-    type: String,
-    select: false
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
+  {
+    timestamps: true,
+    discriminatorKey: 'role'
   }
-}, {
-  discriminatorKey: 'role',
-  timestamps: true
-});
+);
+
+// Index for efficient queries
+userSchema.index({ email: 1 });
+userSchema.index({ phone: 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
@@ -121,26 +129,28 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 
 // Method to check if password was changed after token was issued
 userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
-    if (this.passwordChangedAt) {
-      const changedTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
-      return JWTTimestamp < changedTimestamp;
-    }
-    return false;
-  };
-  
-  // Method to create password reset token
-  userSchema.methods.createPasswordResetToken = function() {
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    
-    this.resetPasswordToken = crypto
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
-    
-    this.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
-    
-    return resetToken;
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
+    return JWTTimestamp < changedTimestamp;
+  }
+  return false;
 };
 
+// Method to create password reset token
+userSchema.methods.createPasswordResetToken = function() {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  
+  this.resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  
+  this.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+  
+  return resetToken;
+};
+
+// Base User model (no discriminators defined here to avoid conflicts)
 const User = mongoose.model('User', userSchema);
+
 export default User;
