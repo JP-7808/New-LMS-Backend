@@ -29,7 +29,7 @@ const generateZoomToken = async () => {
       }
     );
     const token = response.data.access_token;
-    console.log('Generated Zoom OAuth Token:', token);
+    
     return token;
   } catch (error) {
     console.error('Error generating Zoom OAuth token:', JSON.stringify(error.response?.data || error.message, null, 2));
@@ -78,22 +78,7 @@ export const createLiveClass = async (req, res) => {
     const token = await generateZoomToken();
     let zoomResponse;
     try {
-      console.log('Sending Zoom API request to: https://api.zoom.us/v2/users/me/meetings');
-      console.log('Zoom request body:', JSON.stringify({
-        topic: title,
-        type: 2,
-        start_time: new Date(startTime).toISOString(),
-        duration: duration,
-        timezone: 'UTC',
-        settings: {
-          host_video: true,
-          participant_video: true,
-          join_before_host: true,
-          mute_upon_entry: false,
-          watermark: false,
-          use_pmi: false,
-        },
-      }, null, 2));
+      
       zoomResponse = await axios.post(
         'https://api.zoom.us/v2/users/me/meetings',
         {
@@ -118,7 +103,7 @@ export const createLiveClass = async (req, res) => {
           },
         }
       );
-      console.log('Zoom API response:', JSON.stringify(zoomResponse.data, null, 2));
+      
     } catch (zoomError) {
       console.error('Zoom API error details:', JSON.stringify(zoomError.response?.data || zoomError.message, null, 2));
       return res.status(500).json({
@@ -166,7 +151,7 @@ export const createLiveClass = async (req, res) => {
         );
       });
 
-      console.log('Notifications created for live class:', JSON.stringify(notificationResponse, null, 2));
+      
     } catch (notificationError) {
       console.error('Failed to create notifications for live class:', JSON.stringify(notificationError, null, 2));
       // Note: Not throwing an error to allow live class creation to succeed even if notifications fail
@@ -206,7 +191,7 @@ export const getLiveClasses = async (req, res) => {
       user.role === 'admin' ||
       (user.role === 'instructor' && course.instructor.toString() === user._id.toString()) ||
       (user.role === 'student' &&
-        (await Enrollment.findOne({ course: courseId, student: user._id, status: { $in: ['enrolled', 'completed'] } })));
+        (await Enrollment.findOne({ course: courseId, student: user._id, status: { $in: ['active', 'completed'] } })));
 
     if (!isAuthorized) {
       return res.status(403).json({
@@ -247,15 +232,15 @@ export const joinLiveClass = async (req, res) => {
       });
     }
 
-    // Check if user is authorized (Admin, Instructor, or enrolled Student)
+    // Check if user is authorized (Admin, Instructor, or enrolled Student with status 'active' or 'completed')
     const isAuthorized =
       user.role === 'admin' ||
-      (user.role === 'instructor') ||
+      user.role === 'instructor' ||
       (user.role === 'student' &&
         (await Enrollment.findOne({
           course: liveClass.course._id,
           student: user._id,
-          status: { $in: ['enrolled', 'completed'] },
+          status: { $in: ['active', 'completed'] },
         })));
 
     if (!isAuthorized) {
