@@ -1,10 +1,22 @@
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import { generateToken } from './authController.js';
 
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 export const googleAuth = async (req, res, next) => {
   try {
-    const { googleId, email, firstName, lastName, avatar } = req.body;
+    const { idToken } = req.body;
+
+    // Verify the Google ID token
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID, // Must match the Client ID from Google Cloud Console
+    });
+    const payload = ticket.getPayload();
+
+    const { sub: googleId, email, given_name: firstName, family_name: lastName} = payload;
 
     // Check if user exists with this googleId
     let user = await User.findOne({ googleId });
@@ -17,7 +29,7 @@ export const googleAuth = async (req, res, next) => {
         // Merge accounts if email exists
         existingUser.googleId = googleId;
         existingUser.provider = 'google';
-        existingUser.isVerified = true; // Google users are automatically verified
+        existingUser.isVerified = true;
         if (avatar) existingUser.avatar = avatar;
         user = await existingUser.save();
       } else {
@@ -29,8 +41,8 @@ export const googleAuth = async (req, res, next) => {
           lastName,
           avatar: avatar || 'https://res.cloudinary.com/dcgilmdbm/image/upload/v1747893719/default_avatar_xpw8jv.jpg',
           provider: 'google',
-          isVerified: true, // Google users are automatically verified
-          password: 'google-auth-no-password' // Dummy password that won't be used
+          isVerified: true,
+          password: 'google-auth-no-password'
         });
       }
     }
@@ -64,6 +76,7 @@ export const googleAuth = async (req, res, next) => {
       }
     });
   } catch (error) {
+    console.error('Google authentication error:', error);
     next(error);
   }
 };
