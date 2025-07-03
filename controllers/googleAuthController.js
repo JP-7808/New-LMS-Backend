@@ -19,7 +19,7 @@ export const googleAuth = async (req, res, next) => {
     });
     const payload = ticket.getPayload();
 
-    const { sub: googleId, email, given_name: firstName, family_name: lastName} = payload;
+    const { sub: googleId, email, given_name: firstName, family_name: lastName, picture: avatar } = payload;
 
     // Check if user exists with this googleId
     let user = await User.findOne({ googleId });
@@ -33,10 +33,10 @@ export const googleAuth = async (req, res, next) => {
         existingUser.googleId = googleId;
         existingUser.provider = 'google';
         existingUser.isVerified = true;
-        if (avatar) existingUser.avatar = avatar;
+        if (avatar) existingUser.avatar = avatar; // Update avatar only if picture is provided
         user = await existingUser.save();
       } else {
-        // Create new user
+        // Create new user with avatar from Google or default
         user = await User.create({
           googleId,
           email,
