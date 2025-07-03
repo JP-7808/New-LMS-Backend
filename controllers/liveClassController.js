@@ -173,7 +173,8 @@ export const getLiveClasses = async (req, res) => {
     // Check if user is authorized (Admin, Instructor, or enrolled Student)
     const isAuthorized =
       user.role === 'admin' ||
-      (user.role === 'instructor' && course.instructor.toString() === user._id.toString()) ||
+      //  (user.role === 'instructor' && liveClass.instructor.toString() === user._id.toString()) ||
+      (user.role === 'instructor') ||
       (user.role === 'student' &&
         (await Enrollment.findOne({ course: courseId, student: user._id, status: { $in: ['enrolled', 'completed'] } })));
 
