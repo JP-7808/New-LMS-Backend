@@ -12,6 +12,10 @@ export const googleAuth = async (req, res, next) => {
   try {
     const { idToken } = req.body;
 
+    if (!idToken) {
+      return res.status(400).json({ success: false, message: 'idToken is required' });
+    }
+
     // Verify the Google ID token with debugging
     const ticket = await client.verifyIdToken({
       idToken,
@@ -20,26 +24,27 @@ export const googleAuth = async (req, res, next) => {
     const payload = ticket.getPayload();
     console.log('Google Payload:', payload); // Debug payload
 
-    const { sub: googleId, email, given_name: firstName, family_name: lastName, picture: avatar } = payload;
-
-    // Default role for new Google users (e.g., 'student')
+    const { sub: googleId, email, given_name: firstName, family_name: lastName = '', picture: avatar } = payload;
     const defaultRole = 'student';
+
+    // Validate required fields
+    if (!googleId || !email || !firstName) {
+      return res.status(400).json({ success: false, message: 'Invalid token payload' });
+    }
 
     // Check if user exists with this googleId
     let user = await User.findOne({ googleId });
 
     if (!user) {
-      // Check if email already exists (for users who might have signed up normally first)
-      const existingUser = await User.findOne({ email }).select('+provider');
+      // Check if email already exists
+      const existingUser = await User.findOne({ email }).select('+provider +role');
       
       if (existingUser) {
-        // Merge accounts if email exists
         if (existingUser.provider === 'local') {
           existingUser.googleId = googleId;
           existingUser.provider = 'google';
           existingUser.isVerified = true;
           if (avatar) existingUser.avatar = avatar;
-          existingUser.role = existingUser.role || defaultRole; // Ensure role is set
           user = await existingUser.save();
         } else {
           return res.status(400).json({
@@ -48,19 +53,23 @@ export const googleAuth = async (req, res, next) => {
           });
         }
       } else {
-        // Create new user with avatar from Google or default
+        // Create new user with default lastName if missing
         user = await User.create({
           googleId,
           email,
           firstName,
-          lastName,
+          lastName: lastName || 'Unknown', // Default to 'Unknown' if family_name is missing
           avatar: avatar || 'https://res.cloudinary.com/dcgilmdbm/image/upload/v1747893719/default_avatar_xpw8jv.jpg',
           provider: 'google',
           isVerified: true,
           password: 'google-auth-no-password',
-          role: defaultRole, // Set default role
+          role: defaultRole,
         });
       }
+    } else if (!user.role) {
+      // Ensure role is set for existing users without a role
+      user.role = defaultRole;
+      await user.save();
     }
 
     // Generate token
@@ -92,7 +101,11 @@ export const googleAuth = async (req, res, next) => {
       }
     });
   } catch (error) {
-    console.error('Google authentication error:', error.message, error.stack);
+    console.error('Google authentication error:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code, // For MongoDB errors
+    });
     next(error);
   }
 };
