@@ -12,29 +12,41 @@ export const googleAuth = async (req, res, next) => {
   try {
     const { idToken } = req.body;
 
-    // Verify the Google ID token
+    // Verify the Google ID token with debugging
     const ticket = await client.verifyIdToken({
       idToken,
-      audience: process.env.GOOGLE_CLIENT_ID, // Must match the Client ID from Google Cloud Console
+      audience: process.env.GOOGLE_CLIENT_ID,
     });
     const payload = ticket.getPayload();
+    console.log('Google Payload:', payload); // Debug payload
 
     const { sub: googleId, email, given_name: firstName, family_name: lastName, picture: avatar } = payload;
+
+    // Default role for new Google users (e.g., 'student')
+    const defaultRole = 'student';
 
     // Check if user exists with this googleId
     let user = await User.findOne({ googleId });
 
     if (!user) {
       // Check if email already exists (for users who might have signed up normally first)
-      const existingUser = await User.findOne({ email });
+      const existingUser = await User.findOne({ email }).select('+provider');
       
       if (existingUser) {
         // Merge accounts if email exists
-        existingUser.googleId = googleId;
-        existingUser.provider = 'google';
-        existingUser.isVerified = true;
-        if (avatar) existingUser.avatar = avatar; // Update avatar only if picture is provided
-        user = await existingUser.save();
+        if (existingUser.provider === 'local') {
+          existingUser.googleId = googleId;
+          existingUser.provider = 'google';
+          existingUser.isVerified = true;
+          if (avatar) existingUser.avatar = avatar;
+          existingUser.role = existingUser.role || defaultRole; // Ensure role is set
+          user = await existingUser.save();
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: 'Email already linked to another Google account',
+          });
+        }
       } else {
         // Create new user with avatar from Google or default
         user = await User.create({
@@ -45,7 +57,8 @@ export const googleAuth = async (req, res, next) => {
           avatar: avatar || 'https://res.cloudinary.com/dcgilmdbm/image/upload/v1747893719/default_avatar_xpw8jv.jpg',
           provider: 'google',
           isVerified: true,
-          password: 'google-auth-no-password'
+          password: 'google-auth-no-password',
+          role: defaultRole, // Set default role
         });
       }
     }
@@ -79,7 +92,7 @@ export const googleAuth = async (req, res, next) => {
       }
     });
   } catch (error) {
-    console.error('Google authentication error:', error);
+    console.error('Google authentication error:', error.message, error.stack);
     next(error);
   }
 };
